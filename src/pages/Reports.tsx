@@ -39,8 +39,8 @@ const Reports = () => {
 
   const filteredSubmissions = submissions.filter(
     (sub) =>
-      (!selectedTask || sub.taskId === selectedTask) &&
-      (!selectedGroup || sub.group === selectedGroup)
+      (selectedTask === "all" || !selectedTask || sub.taskId === selectedTask) &&
+      (selectedGroup === "all" || !selectedGroup || sub.group === selectedGroup)
   );
 
   return (
@@ -73,7 +73,7 @@ const Reports = () => {
                     <SelectValue placeholder="Todas las tareas" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todas las tareas</SelectItem>
+                    <SelectItem value="all">Todas las tareas</SelectItem>
                     {tasks.map((task) => (
                       <SelectItem key={task.id} value={task.id}>
                         {task.name} - {task.subject}
@@ -88,7 +88,7 @@ const Reports = () => {
                     <SelectValue placeholder="Todos los grupos" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Todos los grupos</SelectItem>
+                    <SelectItem value="all">Todos los grupos</SelectItem>
                     {GROUPS.map((group) => (
                       <SelectItem key={group} value={group}>
                         {group}
