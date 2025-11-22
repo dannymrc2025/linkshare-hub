@@ -15,4 +15,5 @@ export default defineConfig(({ mode }) => ({
       "@": path.resolve(__dirname, "./src"),
     },
   },
+  base: '/linkshare-hub/',  // Cambia 'nombre-de-tu-repositorio' por el nombre real de tu repositorio en GitHub
 }));
