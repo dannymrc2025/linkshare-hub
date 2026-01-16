@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Lock, Plus, ListTodo } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ArrowLeft, Lock, Plus, ListTodo, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 
 interface Task {
@@ -16,6 +17,16 @@ interface Task {
   createdAt: string;
 }
 
+interface Submission {
+  id: string;
+  taskId: string;
+  taskName: string;
+  members: string[];
+  group: string;
+  link: string;
+  submittedAt: string;
+}
+
 const Admin = () => {
   const navigate = useNavigate();
   const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -23,6 +34,16 @@ const Admin = () => {
   const [taskName, setTaskName] = useState("");
   const [subject, setSubject] = useState("");
   const [maxMembers, setMaxMembers] = useState<string>("1");
+  
+  // Estado para gestión de trabajos
+  const [selectedTaskForDeletion, setSelectedTaskForDeletion] = useState<string>("");
+  const [submissions, setSubmissions] = useState<Submission[]>([]);
+  const [selectedSubmissions, setSelectedSubmissions] = useState<string[]>([]);
+
+  useEffect(() => {
+    const loadedSubmissions = JSON.parse(localStorage.getItem("submissions") || "[]");
+    setSubmissions(loadedSubmissions);
+  }, []);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -61,6 +82,47 @@ const Admin = () => {
 
   const getTasks = (): Task[] => {
     return JSON.parse(localStorage.getItem("tasks") || "[]");
+  };
+
+  const filteredSubmissions = submissions.filter(
+    (sub) => sub.taskId === selectedTaskForDeletion
+  );
+
+  const handleToggleSubmission = (submissionId: string) => {
+    setSelectedSubmissions((prev) =>
+      prev.includes(submissionId)
+        ? prev.filter((id) => id !== submissionId)
+        : [...prev, submissionId]
+    );
+  };
+
+  const handleSelectAll = () => {
+    if (selectedSubmissions.length === filteredSubmissions.length) {
+      setSelectedSubmissions([]);
+    } else {
+      setSelectedSubmissions(filteredSubmissions.map((sub) => sub.id));
+    }
+  };
+
+  const handleDeleteSelected = () => {
+    if (selectedSubmissions.length === 0) {
+      toast.error("Selecciona al menos un trabajo para eliminar");
+      return;
+    }
+
+    const updatedSubmissions = submissions.filter(
+      (sub) => !selectedSubmissions.includes(sub.id)
+    );
+    
+    localStorage.setItem("submissions", JSON.stringify(updatedSubmissions));
+    setSubmissions(updatedSubmissions);
+    setSelectedSubmissions([]);
+    toast.success(`${selectedSubmissions.length} trabajo(s) eliminado(s)`);
+  };
+
+  const handleTaskSelectionChange = (taskId: string) => {
+    setSelectedTaskForDeletion(taskId);
+    setSelectedSubmissions([]);
   };
 
   if (!isAuthenticated) {
@@ -180,6 +242,94 @@ const Admin = () => {
                 Crear Tarea
               </Button>
             </form>
+          </CardContent>
+        </Card>
+
+        {/* Sección para eliminar trabajos */}
+        <Card className="shadow-card hover:shadow-hover transition-shadow">
+          <CardHeader>
+            <div className="flex items-center gap-2">
+              <div className="w-10 h-10 rounded-lg bg-destructive flex items-center justify-center">
+                <Trash2 className="w-5 h-5 text-white" />
+              </div>
+              <div>
+                <CardTitle>Eliminar Trabajos</CardTitle>
+                <CardDescription>Selecciona una tarea y elimina los trabajos que desees</CardDescription>
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label>Seleccionar Tarea</Label>
+              <Select value={selectedTaskForDeletion} onValueChange={handleTaskSelectionChange}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Elige una tarea" />
+                </SelectTrigger>
+                <SelectContent>
+                  {getTasks().map((task) => (
+                    <SelectItem key={task.id} value={task.id}>
+                      {task.name} - {task.subject}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {selectedTaskForDeletion && (
+              <>
+                {filteredSubmissions.length === 0 ? (
+                  <p className="text-center text-muted-foreground py-4">
+                    No hay trabajos enviados para esta tarea
+                  </p>
+                ) : (
+                  <>
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Checkbox
+                          id="selectAll"
+                          checked={selectedSubmissions.length === filteredSubmissions.length && filteredSubmissions.length > 0}
+                          onCheckedChange={handleSelectAll}
+                        />
+                        <Label htmlFor="selectAll" className="text-sm cursor-pointer">
+                          Seleccionar todos ({filteredSubmissions.length})
+                        </Label>
+                      </div>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={handleDeleteSelected}
+                        disabled={selectedSubmissions.length === 0}
+                      >
+                        <Trash2 className="w-4 h-4 mr-2" />
+                        Eliminar ({selectedSubmissions.length})
+                      </Button>
+                    </div>
+
+                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                      {filteredSubmissions.map((submission) => (
+                        <div
+                          key={submission.id}
+                          className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                        >
+                          <Checkbox
+                            checked={selectedSubmissions.includes(submission.id)}
+                            onCheckedChange={() => handleToggleSubmission(submission.id)}
+                          />
+                          <div className="flex-1 min-w-0">
+                            <p className="font-medium truncate">
+                              {submission.members.join(", ")}
+                            </p>
+                            <p className="text-sm text-muted-foreground">
+                              Grupo {submission.group} • {new Date(submission.submittedAt).toLocaleDateString()}
+                            </p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </>
+                )}
+              </>
+            )}
           </CardContent>
         </Card>
 
