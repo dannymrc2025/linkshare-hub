@@ -53,7 +53,7 @@ const Index = () => {
           {/* Hero Section */}
           <div className="text-center space-y-4">
             <h2 className="text-4xl md:text-5xl font-bold tracking-tight">
-              Bienvenido a la plataforma
+              Comparte tu tarea
             </h2>
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Facilita la entrega y gestión de trabajos escolares de forma organizada y eficiente
@@ -94,39 +94,6 @@ const Index = () => {
             })}
           </div>
 
-          {/* Features Section */}
-          <div className="mt-16 p-8 rounded-2xl bg-gradient-hero border">
-            <h3 className="text-2xl font-bold mb-6 text-center">Características</h3>
-            <div className="grid md:grid-cols-3 gap-6 text-center">
-              <div>
-                <div className="w-12 h-12 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-3">
-                  <UserCog className="w-6 h-6 text-primary" />
-                </div>
-                <h4 className="font-semibold mb-2">Gestión Sencilla</h4>
-                <p className="text-sm text-muted-foreground">
-                  Crea tareas con límites de integrantes personalizables
-                </p>
-              </div>
-              <div>
-                <div className="w-12 h-12 rounded-full bg-secondary/10 flex items-center justify-center mx-auto mb-3">
-                  <Users className="w-6 h-6 text-secondary" />
-                </div>
-                <h4 className="font-semibold mb-2">Envío Rápido</h4>
-                <p className="text-sm text-muted-foreground">
-                  Los alumnos pueden enviar sus trabajos fácilmente
-                </p>
-              </div>
-              <div>
-                <div className="w-12 h-12 rounded-full bg-accent/10 flex items-center justify-center mx-auto mb-3">
-                  <FileText className="w-6 h-6 text-accent" />
-                </div>
-                <h4 className="font-semibold mb-2">Reportes Claros</h4>
-                <p className="text-sm text-muted-foreground">
-                  Visualiza todos los trabajos organizados por tarea y grupo
-                </p>
-              </div>
-            </div>
-          </div>
         </div>
       </main>
 
