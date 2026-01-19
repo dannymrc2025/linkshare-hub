@@ -3,7 +3,9 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, FileText, ExternalLink } from "lucide-react";
+import { ArrowLeft, FileText, ExternalLink, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 
 interface Task {
   id: string;
@@ -13,12 +15,12 @@ interface Task {
 
 interface Submission {
   id: string;
-  taskId: string;
-  taskName: string;
+  task_id: string;
+  task_name: string;
   members: string[];
-  group: string;
+  group_name: string;
   link: string;
-  submittedAt: string;
+  submitted_at: string;
 }
 
 const GROUPS = ["2A", "2C", "2D", "2F Leona"];
@@ -29,19 +31,45 @@ const Reports = () => {
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [selectedTask, setSelectedTask] = useState<string>("");
   const [selectedGroup, setSelectedGroup] = useState<string>("");
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const loadedTasks = JSON.parse(localStorage.getItem("tasks") || "[]");
-    const loadedSubmissions = JSON.parse(localStorage.getItem("submissions") || "[]");
-    setTasks(loadedTasks);
-    setSubmissions(loadedSubmissions);
+    loadData();
   }, []);
+
+  const loadData = async () => {
+    try {
+      const [tasksResult, submissionsResult] = await Promise.all([
+        supabase.from("tasks").select("*").order("created_at", { ascending: false }),
+        supabase.from("submissions").select("*").order("submitted_at", { ascending: false }),
+      ]);
+
+      if (tasksResult.error) throw tasksResult.error;
+      if (submissionsResult.error) throw submissionsResult.error;
+
+      setTasks(tasksResult.data || []);
+      setSubmissions(submissionsResult.data || []);
+    } catch (error) {
+      console.error("Error loading data:", error);
+      toast.error("Error al cargar los datos");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const filteredSubmissions = submissions.filter(
     (sub) =>
-      (selectedTask === "all" || !selectedTask || sub.taskId === selectedTask) &&
-      (selectedGroup === "all" || !selectedGroup || sub.group === selectedGroup)
+      (selectedTask === "all" || !selectedTask || sub.task_id === selectedTask) &&
+      (selectedGroup === "all" || !selectedGroup || sub.group_name === selectedGroup)
   );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-4 md:p-8">
@@ -132,16 +160,16 @@ const Reports = () => {
                   >
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
                       <div className="space-y-2">
-                        <h3 className="font-semibold text-lg">{submission.taskName}</h3>
+                        <h3 className="font-semibold text-lg">{submission.task_name}</h3>
                         <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
                           <span className="px-2 py-1 bg-primary/10 text-primary rounded">
-                            {submission.group}
+                            {submission.group_name}
                           </span>
                           <span>•</span>
                           <span>{submission.members.join(", ")}</span>
                         </div>
                         <p className="text-xs text-muted-foreground">
-                          Entregado: {new Date(submission.submittedAt).toLocaleString("es-ES")}
+                          Entregado: {new Date(submission.submitted_at).toLocaleString("es-ES")}
                         </p>
                       </div>
                       <Button

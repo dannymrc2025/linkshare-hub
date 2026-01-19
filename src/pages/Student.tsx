@@ -5,24 +5,15 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Send, Users } from "lucide-react";
+import { ArrowLeft, Send, Users, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Task {
   id: string;
   name: string;
   subject: string;
-  maxMembers: number;
-}
-
-interface Submission {
-  id: string;
-  taskId: string;
-  taskName: string;
-  members: string[];
-  group: string;
-  link: string;
-  submittedAt: string;
+  max_members: number;
 }
 
 const GROUPS = ["2A", "2C", "2D", "2F Leona"];
@@ -34,17 +25,35 @@ const Student = () => {
   const [members, setMembers] = useState<string[]>([""]);
   const [group, setGroup] = useState<string>("");
   const [link, setLink] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    const loadedTasks = JSON.parse(localStorage.getItem("tasks") || "[]");
-    setTasks(loadedTasks);
+    loadTasks();
   }, []);
+
+  const loadTasks = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("tasks")
+        .select("*")
+        .order("created_at", { ascending: false });
+
+      if (error) throw error;
+      setTasks(data || []);
+    } catch (error) {
+      console.error("Error loading tasks:", error);
+      toast.error("Error al cargar las tareas");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const currentTask = tasks.find(t => t.id === selectedTask);
 
   useEffect(() => {
     if (currentTask) {
-      setMembers(Array(currentTask.maxMembers).fill(""));
+      setMembers(Array(currentTask.max_members).fill(""));
     }
   }, [selectedTask, currentTask]);
 
@@ -54,7 +63,7 @@ const Student = () => {
     setMembers(newMembers);
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
     if (!selectedTask || !group || !link.trim()) {
@@ -68,25 +77,38 @@ const Student = () => {
       return;
     }
 
-    const submission: Submission = {
-      id: Date.now().toString(),
-      taskId: selectedTask,
-      taskName: currentTask?.name || "",
-      members: filledMembers,
-      group,
-      link,
-      submittedAt: new Date().toISOString(),
-    };
+    setSubmitting(true);
+    try {
+      const { error } = await supabase.from("submissions").insert({
+        task_id: selectedTask,
+        task_name: currentTask?.name || "",
+        members: filledMembers,
+        group_name: group,
+        link,
+      });
 
-    const existingSubmissions = JSON.parse(localStorage.getItem("submissions") || "[]");
-    localStorage.setItem("submissions", JSON.stringify([...existingSubmissions, submission]));
+      if (error) throw error;
 
-    toast.success("Trabajo enviado exitosamente");
-    setSelectedTask("");
-    setMembers([""]);
-    setGroup("");
-    setLink("");
+      toast.success("Trabajo enviado exitosamente");
+      setSelectedTask("");
+      setMembers([""]);
+      setGroup("");
+      setLink("");
+    } catch (error) {
+      console.error("Error submitting:", error);
+      toast.error("Error al enviar el trabajo");
+    } finally {
+      setSubmitting(false);
+    }
   };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen p-4 md:p-8 bg-gradient-hero">
@@ -144,7 +166,7 @@ const Student = () => {
               {currentTask && (
                 <>
                   <div className="space-y-4">
-                    <Label>Integrantes del Equipo (máx. {currentTask.maxMembers})</Label>
+                    <Label>Integrantes del Equipo (máx. {currentTask.max_members})</Label>
                     {members.map((member, index) => (
                       <Input
                         key={index}
@@ -184,8 +206,16 @@ const Student = () => {
                     />
                   </div>
 
-                  <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90 transition-opacity">
-                    <Send className="w-4 h-4 mr-2" />
+                  <Button 
+                    type="submit" 
+                    className="w-full bg-gradient-primary hover:opacity-90 transition-opacity"
+                    disabled={submitting}
+                  >
+                    {submitting ? (
+                      <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    ) : (
+                      <Send className="w-4 h-4 mr-2" />
+                    )}
                     Enviar Trabajo
                   </Button>
                 </>

@@ -14,7 +14,68 @@ export type Database = {
   }
   public: {
     Tables: {
-      [_ in never]: never
+      submissions: {
+        Row: {
+          group_name: string
+          id: string
+          link: string
+          members: string[]
+          submitted_at: string
+          task_id: string
+          task_name: string
+        }
+        Insert: {
+          group_name: string
+          id?: string
+          link: string
+          members: string[]
+          submitted_at?: string
+          task_id: string
+          task_name: string
+        }
+        Update: {
+          group_name?: string
+          id?: string
+          link?: string
+          members?: string[]
+          submitted_at?: string
+          task_id?: string
+          task_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "submissions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      tasks: {
+        Row: {
+          created_at: string
+          id: string
+          max_members: number
+          name: string
+          subject: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          max_members?: number
+          name: string
+          subject: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          max_members?: number
+          name?: string
+          subject?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
