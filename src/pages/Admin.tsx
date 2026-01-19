@@ -6,25 +6,26 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Lock, Plus, ListTodo, Trash2 } from "lucide-react";
+import { ArrowLeft, Lock, Plus, ListTodo, Trash2, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 interface Task {
   id: string;
   name: string;
   subject: string;
-  maxMembers: number;
-  createdAt: string;
+  max_members: number;
+  created_at: string;
 }
 
 interface Submission {
   id: string;
-  taskId: string;
-  taskName: string;
+  task_id: string;
+  task_name: string;
   members: string[];
-  group: string;
+  group_name: string;
   link: string;
-  submittedAt: string;
+  submitted_at: string;
 }
 
 const Admin = () => {
@@ -34,16 +35,42 @@ const Admin = () => {
   const [taskName, setTaskName] = useState("");
   const [subject, setSubject] = useState("");
   const [maxMembers, setMaxMembers] = useState<string>("1");
+  const [creatingTask, setCreatingTask] = useState(false);
   
   // Estado para gestión de trabajos
+  const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTaskForDeletion, setSelectedTaskForDeletion] = useState<string>("");
   const [submissions, setSubmissions] = useState<Submission[]>([]);
   const [selectedSubmissions, setSelectedSubmissions] = useState<string[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+
+  const loadData = async () => {
+    setLoading(true);
+    try {
+      const [tasksResult, submissionsResult] = await Promise.all([
+        supabase.from("tasks").select("*").order("created_at", { ascending: false }),
+        supabase.from("submissions").select("*").order("submitted_at", { ascending: false }),
+      ]);
+
+      if (tasksResult.error) throw tasksResult.error;
+      if (submissionsResult.error) throw submissionsResult.error;
+
+      setTasks(tasksResult.data || []);
+      setSubmissions(submissionsResult.data || []);
+    } catch (error) {
+      console.error("Error loading data:", error);
+      toast.error("Error al cargar los datos");
+    } finally {
+      setLoading(false);
+    }
+  };
 
   useEffect(() => {
-    const loadedSubmissions = JSON.parse(localStorage.getItem("submissions") || "[]");
-    setSubmissions(loadedSubmissions);
-  }, []);
+    if (isAuthenticated) {
+      loadData();
+    }
+  }, [isAuthenticated]);
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
@@ -55,7 +82,7 @@ const Admin = () => {
     }
   };
 
-  const handleCreateTask = (e: React.FormEvent) => {
+  const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!taskName.trim() || !subject.trim()) {
@@ -63,29 +90,31 @@ const Admin = () => {
       return;
     }
 
-    const newTask: Task = {
-      id: Date.now().toString(),
-      name: taskName,
-      subject: subject,
-      maxMembers: parseInt(maxMembers),
-      createdAt: new Date().toISOString(),
-    };
+    setCreatingTask(true);
+    try {
+      const { error } = await supabase.from("tasks").insert({
+        name: taskName,
+        subject: subject,
+        max_members: parseInt(maxMembers),
+      });
 
-    const existingTasks = JSON.parse(localStorage.getItem("tasks") || "[]");
-    localStorage.setItem("tasks", JSON.stringify([...existingTasks, newTask]));
-    
-    toast.success("Tarea creada exitosamente");
-    setTaskName("");
-    setSubject("");
-    setMaxMembers("1");
-  };
-
-  const getTasks = (): Task[] => {
-    return JSON.parse(localStorage.getItem("tasks") || "[]");
+      if (error) throw error;
+      
+      toast.success("Tarea creada exitosamente");
+      setTaskName("");
+      setSubject("");
+      setMaxMembers("1");
+      loadData();
+    } catch (error) {
+      console.error("Error creating task:", error);
+      toast.error("Error al crear la tarea");
+    } finally {
+      setCreatingTask(false);
+    }
   };
 
   const filteredSubmissions = submissions.filter(
-    (sub) => sub.taskId === selectedTaskForDeletion
+    (sub) => sub.task_id === selectedTaskForDeletion
   );
 
   const handleToggleSubmission = (submissionId: string) => {
@@ -104,20 +133,30 @@ const Admin = () => {
     }
   };
 
-  const handleDeleteSelected = () => {
+  const handleDeleteSelected = async () => {
     if (selectedSubmissions.length === 0) {
       toast.error("Selecciona al menos un trabajo para eliminar");
       return;
     }
 
-    const updatedSubmissions = submissions.filter(
-      (sub) => !selectedSubmissions.includes(sub.id)
-    );
-    
-    localStorage.setItem("submissions", JSON.stringify(updatedSubmissions));
-    setSubmissions(updatedSubmissions);
-    setSelectedSubmissions([]);
-    toast.success(`${selectedSubmissions.length} trabajo(s) eliminado(s)`);
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("submissions")
+        .delete()
+        .in("id", selectedSubmissions);
+
+      if (error) throw error;
+
+      toast.success(`${selectedSubmissions.length} trabajo(s) eliminado(s)`);
+      setSelectedSubmissions([]);
+      loadData();
+    } catch (error) {
+      console.error("Error deleting submissions:", error);
+      toast.error("Error al eliminar los trabajos");
+    } finally {
+      setDeleting(false);
+    }
   };
 
   const handleTaskSelectionChange = (taskId: string) => {
@@ -168,6 +207,14 @@ const Admin = () => {
             </form>
           </CardContent>
         </Card>
+      </div>
+    );
+  }
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
       </div>
     );
   }
@@ -237,8 +284,16 @@ const Admin = () => {
                   </SelectContent>
                 </Select>
               </div>
-              <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90 transition-opacity">
-                <Plus className="w-4 h-4 mr-2" />
+              <Button 
+                type="submit" 
+                className="w-full bg-gradient-primary hover:opacity-90 transition-opacity"
+                disabled={creatingTask}
+              >
+                {creatingTask ? (
+                  <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                ) : (
+                  <Plus className="w-4 h-4 mr-2" />
+                )}
                 Crear Tarea
               </Button>
             </form>
@@ -266,7 +321,7 @@ const Admin = () => {
                   <SelectValue placeholder="Elige una tarea" />
                 </SelectTrigger>
                 <SelectContent>
-                  {getTasks().map((task) => (
+                  {tasks.map((task) => (
                     <SelectItem key={task.id} value={task.id}>
                       {task.name} - {task.subject}
                     </SelectItem>
@@ -298,9 +353,13 @@ const Admin = () => {
                         variant="destructive"
                         size="sm"
                         onClick={handleDeleteSelected}
-                        disabled={selectedSubmissions.length === 0}
+                        disabled={selectedSubmissions.length === 0 || deleting}
                       >
-                        <Trash2 className="w-4 h-4 mr-2" />
+                        {deleting ? (
+                          <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                        ) : (
+                          <Trash2 className="w-4 h-4 mr-2" />
+                        )}
                         Eliminar ({selectedSubmissions.length})
                       </Button>
                     </div>
@@ -320,7 +379,7 @@ const Admin = () => {
                               {submission.members.join(", ")}
                             </p>
                             <p className="text-sm text-muted-foreground">
-                              Grupo {submission.group} • {new Date(submission.submittedAt).toLocaleDateString()}
+                              Grupo {submission.group_name} • {new Date(submission.submitted_at).toLocaleDateString()}
                             </p>
                           </div>
                         </div>
@@ -346,20 +405,20 @@ const Admin = () => {
             </div>
           </CardHeader>
           <CardContent>
-            {getTasks().length === 0 ? (
+            {tasks.length === 0 ? (
               <p className="text-center text-muted-foreground py-8">
                 No hay tareas creadas aún
               </p>
             ) : (
               <div className="space-y-3">
-                {getTasks().map((task) => (
+                {tasks.map((task) => (
                   <div
                     key={task.id}
                     className="p-4 border rounded-lg hover:bg-muted/50 transition-colors"
                   >
                     <h3 className="font-semibold">{task.name}</h3>
                     <p className="text-sm text-muted-foreground">
-                      {task.subject} • Máx. {task.maxMembers} integrante{task.maxMembers > 1 ? "s" : ""}
+                      {task.subject} • Máx. {task.max_members} integrante{task.max_members > 1 ? "s" : ""}
                     </p>
                   </div>
                 ))}
