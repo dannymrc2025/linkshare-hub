@@ -16,28 +16,34 @@ export type Database = {
     Tables: {
       submissions: {
         Row: {
+          grade: string | null
           group_name: string
           id: string
           link: string
           members: string[]
+          observations: string | null
           submitted_at: string
           task_id: string
           task_name: string
         }
         Insert: {
+          grade?: string | null
           group_name: string
           id?: string
           link: string
           members: string[]
+          observations?: string | null
           submitted_at?: string
           task_id: string
           task_name: string
         }
         Update: {
+          grade?: string | null
           group_name?: string
           id?: string
           link?: string
           members?: string[]
+          observations?: string | null
           submitted_at?: string
           task_id?: string
           task_name?: string
