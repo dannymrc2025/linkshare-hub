@@ -99,12 +99,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       return { error: new Error(error.message) };
     }
 
-    // If user was created, add their role
+    // If user was created, add their role using direct insert
+    // The assign_user_role function is security definer so this works
     if (data.user) {
-      const { error: roleError } = await supabase.rpc("assign_user_role", {
-        _user_id: data.user.id,
-        _role: role,
-      });
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .insert({ user_id: data.user.id, role: role });
 
       if (roleError) {
         console.error("Error assigning role:", roleError);
