@@ -7,9 +7,10 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Textarea } from "@/components/ui/textarea";
-import { ArrowLeft, Lock, Plus, ListTodo, Trash2, Loader2, Star, Save } from "lucide-react";
+import { ArrowLeft, Plus, ListTodo, Trash2, Loader2, Star, Save, LogOut, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/hooks/useAuth";
 
 interface Task {
   id: string;
@@ -33,8 +34,8 @@ interface Submission {
 
 const Admin = () => {
   const navigate = useNavigate();
-  const [isAuthenticated, setIsAuthenticated] = useState(false);
-  const [password, setPassword] = useState("");
+  const { user, isTeacher, loading: authLoading, signOut } = useAuth();
+  
   const [taskName, setTaskName] = useState("");
   const [subject, setSubject] = useState("");
   const [maxMembers, setMaxMembers] = useState<string>("1");
@@ -83,20 +84,10 @@ const Admin = () => {
   };
 
   useEffect(() => {
-    if (isAuthenticated) {
+    if (user && isTeacher && !authLoading) {
       loadData();
     }
-  }, [isAuthenticated]);
-
-  const handleLogin = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (password === "2707") {
-      setIsAuthenticated(true);
-      toast.success("Acceso concedido");
-    } else {
-      toast.error("Contraseña incorrecta");
-    }
-  };
+  }, [user, isTeacher, authLoading]);
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,47 +193,78 @@ const Admin = () => {
     }
   };
 
-  if (!isAuthenticated) {
+  const handleSignOut = async () => {
+    await signOut();
+    navigate("/");
+  };
+
+  // Show loading while checking auth
+  if (authLoading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  // Redirect if not authenticated
+  if (!user) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-hero">
         <Card className="w-full max-w-md shadow-hover">
           <CardHeader className="space-y-1">
             <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-4 mx-auto">
-              <Lock className="w-6 h-6 text-primary" />
+              <ShieldAlert className="w-6 h-6 text-primary" />
             </div>
-            <CardTitle className="text-2xl text-center">Acceso Profesor</CardTitle>
+            <CardTitle className="text-2xl text-center">Acceso Requerido</CardTitle>
             <CardDescription className="text-center">
-              Ingresa la contraseña para acceder al panel de administración
+              Debes iniciar sesión como profesor para acceder al panel de administración
             </CardDescription>
           </CardHeader>
-          <CardContent>
-            <form onSubmit={handleLogin} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="password">Contraseña</Label>
-                <Input
-                  id="password"
-                  type="password"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  placeholder="Ingresa tu contraseña"
-                  className="transition-all duration-200 focus:shadow-hover"
-                />
-              </div>
-              <div className="space-y-2">
-                <Button type="submit" className="w-full bg-gradient-primary hover:opacity-90 transition-opacity">
-                  Acceder
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => navigate("/")}
-                  className="w-full"
-                >
-                  <ArrowLeft className="w-4 h-4 mr-2" />
-                  Volver al inicio
-                </Button>
-              </div>
-            </form>
+          <CardContent className="space-y-4">
+            <Button
+              onClick={() => navigate("/auth")}
+              className="w-full bg-gradient-primary hover:opacity-90"
+            >
+              Iniciar Sesión
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => navigate("/")}
+              className="w-full"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Volver al inicio
+            </Button>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
+
+  // Check if user is a teacher
+  if (!isTeacher) {
+    return (
+      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-hero">
+        <Card className="w-full max-w-md shadow-hover">
+          <CardHeader className="space-y-1">
+            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10 mb-4 mx-auto">
+              <ShieldAlert className="w-6 h-6 text-destructive" />
+            </div>
+            <CardTitle className="text-2xl text-center">Acceso Denegado</CardTitle>
+            <CardDescription className="text-center">
+              Solo los profesores pueden acceder al panel de administración
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Button
+              variant="outline"
+              onClick={() => navigate("/")}
+              className="w-full"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Volver al inicio
+            </Button>
           </CardContent>
         </Card>
       </div>
@@ -260,18 +282,24 @@ const Admin = () => {
   return (
     <div className="min-h-screen p-4 md:p-8">
       <div className="max-w-4xl mx-auto space-y-6">
-        <div className="flex items-center gap-4">
-          <Button
-            variant="outline"
-            size="icon"
-            onClick={() => navigate("/")}
-          >
-            <ArrowLeft className="w-4 h-4" />
-          </Button>
-          <div>
-            <h1 className="text-3xl font-bold">Panel de Administración</h1>
-            <p className="text-muted-foreground">Gestiona las tareas de tus alumnos</p>
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => navigate("/")}
+            >
+              <ArrowLeft className="w-4 h-4" />
+            </Button>
+            <div>
+              <h1 className="text-3xl font-bold">Panel de Administración</h1>
+              <p className="text-muted-foreground">Gestiona las tareas de tus alumnos</p>
+            </div>
           </div>
+          <Button variant="outline" onClick={handleSignOut}>
+            <LogOut className="w-4 h-4 mr-2" />
+            Cerrar Sesión
+          </Button>
         </div>
 
         <Card className="shadow-card hover:shadow-hover transition-shadow">
