@@ -21,6 +21,8 @@ interface Submission {
   group_name: string;
   link: string;
   submitted_at: string;
+  grade: string | null;
+  observations: string | null;
 }
 
 const GROUPS = ["2A", "2C", "2D", "2F Leona"];
@@ -158,8 +160,8 @@ const Reports = () => {
                     key={submission.id}
                     className="p-4 border rounded-lg hover:bg-muted/50 transition-all hover:shadow-hover"
                   >
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                      <div className="space-y-2">
+                    <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
+                      <div className="space-y-2 flex-1">
                         <h3 className="font-semibold text-lg">{submission.task_name}</h3>
                         <div className="flex flex-wrap gap-2 text-sm text-muted-foreground">
                           <span className="px-2 py-1 bg-primary/10 text-primary rounded">
@@ -171,11 +173,31 @@ const Reports = () => {
                         <p className="text-xs text-muted-foreground">
                           Entregado: {new Date(submission.submitted_at).toLocaleString("es-ES")}
                         </p>
+                        
+                        {/* Grade and Observations section */}
+                        {(submission.grade || submission.observations) && (
+                          <div className="mt-3 p-3 bg-muted/50 rounded-lg space-y-2">
+                            {submission.grade && (
+                              <div className="flex items-center gap-2">
+                                <span className="text-xs font-medium text-muted-foreground">Calificación:</span>
+                                <span className="px-2 py-0.5 bg-primary text-primary-foreground text-sm font-semibold rounded">
+                                  {submission.grade}
+                                </span>
+                              </div>
+                            )}
+                            {submission.observations && (
+                              <div>
+                                <span className="text-xs font-medium text-muted-foreground">Observaciones:</span>
+                                <p className="text-sm text-foreground mt-1">{submission.observations}</p>
+                              </div>
+                            )}
+                          </div>
+                        )}
                       </div>
                       <Button
                         asChild
                         variant="outline"
-                        className="hover:bg-primary hover:text-primary-foreground transition-colors"
+                        className="hover:bg-primary hover:text-primary-foreground transition-colors shrink-0"
                       >
                         <a
                           href={submission.link}

@@ -6,7 +6,8 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { ArrowLeft, Lock, Plus, ListTodo, Trash2, Loader2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { ArrowLeft, Lock, Plus, ListTodo, Trash2, Loader2, Star, Save } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
@@ -26,6 +27,8 @@ interface Submission {
   group_name: string;
   link: string;
   submitted_at: string;
+  grade: string | null;
+  observations: string | null;
 }
 
 const Admin = () => {
@@ -44,6 +47,9 @@ const Admin = () => {
   const [selectedSubmissions, setSelectedSubmissions] = useState<string[]>([]);
   const [loading, setLoading] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [savingGrade, setSavingGrade] = useState<string | null>(null);
+  const [grades, setGrades] = useState<Record<string, string>>({});
+  const [observationsMap, setObservationsMap] = useState<Record<string, string>>({});
 
   const loadData = async () => {
     setLoading(true);
@@ -58,6 +64,16 @@ const Admin = () => {
 
       setTasks(tasksResult.data || []);
       setSubmissions(submissionsResult.data || []);
+      
+      // Initialize grades and observations from existing data
+      const initialGrades: Record<string, string> = {};
+      const initialObservations: Record<string, string> = {};
+      (submissionsResult.data || []).forEach((sub) => {
+        initialGrades[sub.id] = sub.grade || "";
+        initialObservations[sub.id] = sub.observations || "";
+      });
+      setGrades(initialGrades);
+      setObservationsMap(initialObservations);
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Error al cargar los datos");
@@ -162,6 +178,28 @@ const Admin = () => {
   const handleTaskSelectionChange = (taskId: string) => {
     setSelectedTaskForDeletion(taskId);
     setSelectedSubmissions([]);
+  };
+
+  const handleSaveGrade = async (submissionId: string) => {
+    setSavingGrade(submissionId);
+    try {
+      const { error } = await supabase
+        .from("submissions")
+        .update({
+          grade: grades[submissionId] || null,
+          observations: observationsMap[submissionId] || null,
+        })
+        .eq("id", submissionId);
+
+      if (error) throw error;
+      toast.success("Calificación guardada");
+      loadData();
+    } catch (error) {
+      console.error("Error saving grade:", error);
+      toast.error("Error al guardar la calificación");
+    } finally {
+      setSavingGrade(null);
+    }
   };
 
   if (!isAuthenticated) {
@@ -300,16 +338,16 @@ const Admin = () => {
           </CardContent>
         </Card>
 
-        {/* Sección para eliminar trabajos */}
+        {/* Sección para calificar y eliminar trabajos */}
         <Card className="shadow-card hover:shadow-hover transition-shadow">
           <CardHeader>
             <div className="flex items-center gap-2">
-              <div className="w-10 h-10 rounded-lg bg-destructive flex items-center justify-center">
-                <Trash2 className="w-5 h-5 text-white" />
+              <div className="w-10 h-10 rounded-lg bg-gradient-success flex items-center justify-center">
+                <Star className="w-5 h-5 text-white" />
               </div>
               <div>
-                <CardTitle>Eliminar Trabajos</CardTitle>
-                <CardDescription>Selecciona una tarea y elimina los trabajos que desees</CardDescription>
+                <CardTitle>Calificar y Gestionar Trabajos</CardTitle>
+                <CardDescription>Selecciona una tarea para calificar y gestionar los trabajos</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -364,23 +402,76 @@ const Admin = () => {
                       </Button>
                     </div>
 
-                    <div className="space-y-2 max-h-64 overflow-y-auto">
+                    <div className="space-y-4">
                       {filteredSubmissions.map((submission) => (
                         <div
                           key={submission.id}
-                          className="flex items-center gap-3 p-3 border rounded-lg hover:bg-muted/50 transition-colors"
+                          className="p-4 border rounded-lg hover:bg-muted/50 transition-colors space-y-3"
                         >
-                          <Checkbox
-                            checked={selectedSubmissions.includes(submission.id)}
-                            onCheckedChange={() => handleToggleSubmission(submission.id)}
-                          />
-                          <div className="flex-1 min-w-0">
-                            <p className="font-medium truncate">
-                              {submission.members.join(", ")}
-                            </p>
-                            <p className="text-sm text-muted-foreground">
-                              Grupo {submission.group_name} • {new Date(submission.submitted_at).toLocaleDateString()}
-                            </p>
+                          <div className="flex items-start gap-3">
+                            <Checkbox
+                              checked={selectedSubmissions.includes(submission.id)}
+                              onCheckedChange={() => handleToggleSubmission(submission.id)}
+                            />
+                            <div className="flex-1 min-w-0">
+                              <p className="font-medium">
+                                {submission.members.join(", ")}
+                              </p>
+                              <p className="text-sm text-muted-foreground">
+                                Grupo {submission.group_name} • {new Date(submission.submitted_at).toLocaleDateString()}
+                              </p>
+                              <a 
+                                href={submission.link} 
+                                target="_blank" 
+                                rel="noopener noreferrer"
+                                className="text-sm text-primary hover:underline"
+                              >
+                                Ver trabajo
+                              </a>
+                            </div>
+                          </div>
+                          
+                          <div className="grid md:grid-cols-2 gap-3 pl-7">
+                            <div className="space-y-1">
+                              <Label htmlFor={`grade-${submission.id}`} className="text-xs">
+                                Calificación
+                              </Label>
+                              <Input
+                                id={`grade-${submission.id}`}
+                                value={grades[submission.id] || ""}
+                                onChange={(e) => setGrades(prev => ({ ...prev, [submission.id]: e.target.value }))}
+                                placeholder="Ej: 10, A+, Aprobado"
+                                className="h-8 text-sm"
+                              />
+                            </div>
+                            <div className="space-y-1">
+                              <Label htmlFor={`obs-${submission.id}`} className="text-xs">
+                                Observaciones
+                              </Label>
+                              <Textarea
+                                id={`obs-${submission.id}`}
+                                value={observationsMap[submission.id] || ""}
+                                onChange={(e) => setObservationsMap(prev => ({ ...prev, [submission.id]: e.target.value }))}
+                                placeholder="Comentarios sobre el trabajo..."
+                                className="min-h-[60px] text-sm resize-none"
+                              />
+                            </div>
+                          </div>
+                          
+                          <div className="pl-7">
+                            <Button
+                              size="sm"
+                              onClick={() => handleSaveGrade(submission.id)}
+                              disabled={savingGrade === submission.id}
+                              className="bg-gradient-success hover:opacity-90"
+                            >
+                              {savingGrade === submission.id ? (
+                                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                              ) : (
+                                <Save className="w-4 h-4 mr-2" />
+                              )}
+                              Guardar Calificación
+                            </Button>
                           </div>
                         </div>
                       ))}
