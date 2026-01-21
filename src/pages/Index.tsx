@@ -72,9 +72,9 @@ const Index = () => {
                     </Button>
                   </div>
                 ) : (
-                  <Button onClick={() => navigate("/auth")} size="sm">
+                  <Button variant="outline" size="sm" onClick={() => navigate("/auth")}>
                     <LogIn className="w-4 h-4 mr-2" />
-                    Iniciar Sesión
+                    Profesor
                   </Button>
                 )
               )}
@@ -94,11 +94,6 @@ const Index = () => {
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
               Facilita la entrega y gestión de trabajos escolares de forma organizada y eficiente
             </p>
-            {!user && !loading && (
-              <p className="text-sm text-muted-foreground">
-                Inicia sesión para acceder a todas las funciones
-              </p>
-            )}
           </div>
 
           {/* Modules Grid */}

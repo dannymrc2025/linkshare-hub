@@ -5,10 +5,9 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { ArrowLeft, Send, Users, Loader2, ShieldAlert, LogOut } from "lucide-react";
+import { ArrowLeft, Send, Users, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 
 interface Task {
   id: string;
@@ -21,7 +20,6 @@ const GROUPS = ["2A", "2C", "2D", "2F Leona"];
 
 const Student = () => {
   const navigate = useNavigate();
-  const { user, loading: authLoading, signOut } = useAuth();
   const [tasks, setTasks] = useState<Task[]>([]);
   const [selectedTask, setSelectedTask] = useState<string>("");
   const [members, setMembers] = useState<string[]>([""]);
@@ -31,10 +29,8 @@ const Student = () => {
   const [submitting, setSubmitting] = useState(false);
 
   useEffect(() => {
-    if (user && !authLoading) {
-      loadTasks();
-    }
-  }, [user, authLoading]);
+    loadTasks();
+  }, []);
 
   const loadTasks = async () => {
     try {
@@ -106,55 +102,6 @@ const Student = () => {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
-    navigate("/");
-  };
-
-  // Show loading while checking auth
-  if (authLoading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <Loader2 className="w-8 h-8 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  // Redirect if not authenticated
-  if (!user) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-hero">
-        <Card className="w-full max-w-md shadow-hover">
-          <CardHeader className="space-y-1">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-primary/10 mb-4 mx-auto">
-              <ShieldAlert className="w-6 h-6 text-primary" />
-            </div>
-            <CardTitle className="text-2xl text-center">Acceso Requerido</CardTitle>
-            <CardDescription className="text-center">
-              Debes iniciar sesión para enviar tu trabajo
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <Button
-              onClick={() => navigate("/auth")}
-              className="w-full bg-gradient-primary hover:opacity-90"
-            >
-              Iniciar Sesión
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/")}
-              className="w-full"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Volver al inicio
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center">
@@ -166,24 +113,18 @@ const Student = () => {
   return (
     <div className="min-h-screen p-4 md:p-8 bg-gradient-hero">
       <div className="max-w-3xl mx-auto space-y-6">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4">
-            <Button
-              variant="outline"
-              size="icon"
-              onClick={() => navigate("/")}
-            >
-              <ArrowLeft className="w-4 h-4" />
-            </Button>
-            <div>
-              <h1 className="text-3xl font-bold">Enviar Trabajo</h1>
-              <p className="text-muted-foreground">Completa el formulario para enviar tu tarea</p>
-            </div>
-          </div>
-          <Button variant="outline" onClick={handleSignOut}>
-            <LogOut className="w-4 h-4 mr-2" />
-            Salir
+        <div className="flex items-center gap-4">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => navigate("/")}
+          >
+            <ArrowLeft className="w-4 h-4" />
           </Button>
+          <div>
+            <h1 className="text-3xl font-bold">Enviar Trabajo</h1>
+            <p className="text-muted-foreground">Completa el formulario para enviar tu tarea</p>
+          </div>
         </div>
 
         <Card className="shadow-hover">
