@@ -10,7 +10,6 @@ import { Textarea } from "@/components/ui/textarea";
 import { ArrowLeft, Plus, ListTodo, Trash2, Loader2, Star, Save, LogOut, ShieldAlert } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/hooks/useAuth";
 
 interface Task {
   id: string;
@@ -34,7 +33,8 @@ interface Submission {
 
 const Admin = () => {
   const navigate = useNavigate();
-  const { user, isTeacher, loading: authLoading, signOut } = useAuth();
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [checkingAuth, setCheckingAuth] = useState(true);
   
   const [taskName, setTaskName] = useState("");
   const [subject, setSubject] = useState("");
@@ -51,6 +51,15 @@ const Admin = () => {
   const [savingGrade, setSavingGrade] = useState<string | null>(null);
   const [grades, setGrades] = useState<Record<string, string>>({});
   const [observationsMap, setObservationsMap] = useState<Record<string, string>>({});
+
+  // Check authentication on mount
+  useEffect(() => {
+    const authStatus = localStorage.getItem("teacherAuth");
+    if (authStatus === "true") {
+      setIsAuthenticated(true);
+    }
+    setCheckingAuth(false);
+  }, []);
 
   const loadData = async () => {
     setLoading(true);
@@ -84,10 +93,10 @@ const Admin = () => {
   };
 
   useEffect(() => {
-    if (user && isTeacher && !authLoading) {
+    if (isAuthenticated) {
       loadData();
     }
-  }, [user, isTeacher, authLoading]);
+  }, [isAuthenticated]);
 
   const handleCreateTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -193,13 +202,14 @@ const Admin = () => {
     }
   };
 
-  const handleSignOut = async () => {
-    await signOut();
+  const handleSignOut = () => {
+    localStorage.removeItem("teacherAuth");
+    setIsAuthenticated(false);
     navigate("/");
   };
 
   // Show loading while checking auth
-  if (authLoading) {
+  if (checkingAuth) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="w-8 h-8 animate-spin text-primary" />
@@ -208,7 +218,7 @@ const Admin = () => {
   }
 
   // Redirect if not authenticated
-  if (!user) {
+  if (!isAuthenticated) {
     return (
       <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-hero">
         <Card className="w-full max-w-md shadow-hover">
@@ -218,7 +228,7 @@ const Admin = () => {
             </div>
             <CardTitle className="text-2xl text-center">Acceso Requerido</CardTitle>
             <CardDescription className="text-center">
-              Debes iniciar sesión como profesor para acceder al panel de administración
+              Debes ingresar la contraseña para acceder al panel de administración
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
@@ -226,37 +236,8 @@ const Admin = () => {
               onClick={() => navigate("/auth")}
               className="w-full bg-gradient-primary hover:opacity-90"
             >
-              Iniciar Sesión
+              Ingresar Contraseña
             </Button>
-            <Button
-              variant="outline"
-              onClick={() => navigate("/")}
-              className="w-full"
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Volver al inicio
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
-    );
-  }
-
-  // Check if user is a teacher
-  if (!isTeacher) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-hero">
-        <Card className="w-full max-w-md shadow-hover">
-          <CardHeader className="space-y-1">
-            <div className="flex items-center justify-center w-12 h-12 rounded-full bg-destructive/10 mb-4 mx-auto">
-              <ShieldAlert className="w-6 h-6 text-destructive" />
-            </div>
-            <CardTitle className="text-2xl text-center">Acceso Denegado</CardTitle>
-            <CardDescription className="text-center">
-              Solo los profesores pueden acceder al panel de administración
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
             <Button
               variant="outline"
               onClick={() => navigate("/")}
