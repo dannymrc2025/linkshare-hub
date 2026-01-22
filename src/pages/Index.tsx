@@ -1,12 +1,17 @@
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { GraduationCap, UserCog, Users, FileText, LogIn, LogOut } from "lucide-react";
-import { useAuth } from "@/hooks/useAuth";
 
 const Index = () => {
   const navigate = useNavigate();
-  const { user, isTeacher, loading, signOut } = useAuth();
+  const [isTeacherAuth, setIsTeacherAuth] = useState(false);
+
+  useEffect(() => {
+    const authStatus = localStorage.getItem("teacherAuth");
+    setIsTeacherAuth(authStatus === "true");
+  }, []);
 
   const modules = [
     {
@@ -35,8 +40,9 @@ const Index = () => {
     },
   ];
 
-  const handleSignOut = async () => {
-    await signOut();
+  const handleSignOut = () => {
+    localStorage.removeItem("teacherAuth");
+    setIsTeacherAuth(false);
   };
 
   return (
@@ -55,28 +61,23 @@ const Index = () => {
               </div>
             </div>
             <div className="flex items-center gap-2">
-              {!loading && (
-                user ? (
-                  <div className="flex items-center gap-3">
-                    <span className="text-sm text-muted-foreground hidden md:inline">
-                      {user.email}
-                      {isTeacher && (
-                        <span className="ml-2 px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">
-                          Profesor
-                        </span>
-                      )}
+              {isTeacherAuth ? (
+                <div className="flex items-center gap-3">
+                  <span className="text-sm text-muted-foreground hidden md:inline">
+                    <span className="px-2 py-0.5 bg-primary/10 text-primary text-xs rounded-full">
+                      Profesor
                     </span>
-                    <Button variant="outline" size="sm" onClick={handleSignOut}>
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Salir
-                    </Button>
-                  </div>
-                ) : (
-                  <Button variant="outline" size="sm" onClick={() => navigate("/auth")}>
-                    <LogIn className="w-4 h-4 mr-2" />
-                    Profesor
+                  </span>
+                  <Button variant="outline" size="sm" onClick={handleSignOut}>
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Salir
                   </Button>
-                )
+                </div>
+              ) : (
+                <Button variant="outline" size="sm" onClick={() => navigate("/auth")}>
+                  <LogIn className="w-4 h-4 mr-2" />
+                  Profesor
+                </Button>
               )}
             </div>
           </div>
@@ -100,7 +101,7 @@ const Index = () => {
           <div className="grid md:grid-cols-3 gap-6">
             {modules.map((module) => {
               const Icon = module.icon;
-              const isDisabled = module.requiresTeacher && !isTeacher;
+              const isDisabled = module.requiresTeacher && !isTeacherAuth;
               
               return (
                 <Card
